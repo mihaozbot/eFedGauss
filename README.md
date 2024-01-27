@@ -1,9 +1,9 @@
 
 # eFedGauss: A Federated Approach to Fuzzy Multivariate Gaussian Clustering
-This paper is in the review process.
+**This paper is in the review process.**
 
 ## Overview
-eFedGauss introduces a novel method for data clustering and classification in federated learning. It addresses the challenge of determining the number of clusters in datasets that vary widely, a common issue in federated learning. Our method dynamically adjusts the number of clusters, making it versatile for different types of data, including complex and high-dimensional datasets like those in credit card fraud detection. Our tests, which include synthetic data, the Iris Flower dataset, and credit card fraud detection, demonstrate eFedGauss's superiority over traditional clustering methods in federated settings. This repository provides all necessary resources for implementing and exploring the capabilities of eFedGauss.
+Evolving Federated Gaussian clustering (eFedGauss) addresses the challenge of determining the number of clusters in datasets that vary widely, a common issue in federated learning. Our method dynamically adjusts the number of clusters, making it versatile for different types of data, including complex and high-dimensional datasets like those in credit card fraud detection. Our tests, which include synthetic data, the Iris Flower dataset, and credit card fraud detection, demonstrate eFedGauss's superiority over traditional clustering methods in federated settings. This repository provides all necessary resources for implementing and exploring the capabilities of eFedGauss.
 
 ## Repository Structure
 
@@ -32,42 +32,51 @@ The eFedGauss project is organized as follows:
 
 - `synthetic_experiment/`: Experimental setup and results for testing with synthetic data.
 
+## Getting Started
+
+To get started with eFedGauss, follow the setup instructions below.
+
 ### Setting Up the Environment
 
-Create and activate a Conda environment using the following commands:
+**Create and activate a Conda environment using the following commands:**
+
+\```bash
 conda create -n eFedGauss python=3.10
 conda activate eFedGauss
+\```
 
 ### Installing PyTorch and Related Packages
 
-Install PyTorch, torchvision, torchaudio, and the appropriate version of CUDA:
+**Install PyTorch and related packages with the following command:**
 
+\```bash
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
+\```
 
 ### Installing Additional Requirements
 
-Next, install the other necessary packages listed in the `requirements.txt` file:
+**Install the remaining requirements from the `requirements.txt` file:**
 
-install requirements.txt
+\```bash
+pip install -r requirements.txt
+\```
 
 ## Usage
 
-The experiments are implemented in the files: 
+**Run the experiments using the Jupyter notebooks provided:**
 
-- `credit_card_fraud_experiment.ipynb` for the credit card fraud detection experiment.
-- `iris_flower_experiment.ipynb` for the iris flower classification experiment.
-- `synthetic_experiment.ipynb` for the experiment with synthetic data.
+- `credit_card_fraud_experiment.ipynb`: For credit card fraud detection.
+- `iris_flower_experiment.ipynb`: For Iris Flower classification.
+- `synthetic_experiment.ipynb`: For synthetic data experiments.
 
 ## Requirements
 
-The Python package requirements are listed in `requirements.txt`.
+The required packages are listed in the `requirements.txt` file.
 
 ## Contribution
 
-Contributions to this repository are welcome. Please fork the project, create a feature branch, commit your enhancements or fixes, and submit a pull request.
+Contributions are welcome. Please follow the standard fork-and-pull request workflow.
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial (CC BY-NC) license. This allows for sharing and adapting the work non-commercially as long as appropriate credit is given and any new creations are non-commercially used and licensed under identical terms.
-
-For more information, see [Creative Commons Attribution-NonCommercial (CC BY-NC) license](https://creativecommons.org/licenses/by-nc/4.0/).
+eFedGauss is under GNU General Public License v3 (GPLv3). See `LICENSE` for more details.
