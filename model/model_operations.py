@@ -12,9 +12,6 @@ class ModelOps:
         self.parent.enable_debugging = False
         self.parent.enable_adding = True
         self.parent.enable_merging = True
-
-        # Initialize the logging system
-        #self.initialize_logging()
     
     def ensure_capacity(self, new_c):
         """
@@ -32,12 +29,15 @@ class ModelOps:
             
     def modify_capacity(self, new_c):
         
+        # Compute new capacity required
         new_capacity = 2 ** math.ceil(math.log2(new_c))  # Find the next power of two greater than the given number
         
+        #Expand the parameter tensors
         self.parent.mu = nn.Parameter(self._resize_tensor(self.parent.mu, (new_capacity, self.parent.feature_dim)), requires_grad=False)
         self.parent.S = nn.Parameter(self._resize_tensor(self.parent.S, (new_capacity, self.parent.feature_dim, self.parent.feature_dim)), requires_grad=False)
         self.parent.n = nn.Parameter(self._resize_tensor(self.parent.n, (new_capacity,)), requires_grad=False)
         
+        #Expand supporting non-parameter tensors
         self.parent.S_inv = self._resize_tensor(self.parent.S_inv, (new_capacity, self.parent.feature_dim, self.parent.feature_dim))
         self.parent.cluster_labels = self._resize_tensor(self.parent.cluster_labels, (new_capacity,self.parent.num_classes))
         self.parent.score = self._resize_tensor(self.parent.score, (new_capacity,))
@@ -92,7 +92,6 @@ class ModelOps:
         # Print the new state
         state = "enabled" if self.parent.evolving else "disabled"
         print(f"Evolving has been {state}.")
-
         
     def initialize_logging(self):
         """Initialize logging and record initial parameters."""

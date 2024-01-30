@@ -7,8 +7,7 @@ class ConsequenceOps():
 
     def defuzzify(self):
         
-        # Filter out unlabeled cluster labels (assuming -1 indicates unlabeled)
-        #labeled_indices = self.parent.cluster_labels[0:self.parent.c] != -1
+        # Compute the activations of the clusters
         normalized_gamma = self.compute_normalized_gamma()
 
         # Select only labeled data for Gamma and cluster labels
@@ -20,42 +19,18 @@ class ConsequenceOps():
         # Retrieve the corresponding label
         max_label = torch.argmax(self.parent.cluster_labels[max_index])
         
-        #max_label = torch.argmax(label_scores)
         
         return label_scores, max_label
 
-    '''
-    def defuzzify_batch(self):
-
-        # Normalize Gamma along the cluster dimension
-        normalized_gamma = self.compute_batched_normalized_gamma()
-        
-        # Select only labeled data for Gamma and cluster labels
-        expanded_cluster_labels = self.parent.cluster_labels[:self.parent.c].unsqueeze(0).expand(normalized_gamma.shape[0], -1, -1)
-
-        # Compute label scores
-        label_scores = torch.sum(normalized_gamma.unsqueeze(-1) * expanded_cluster_labels, dim=1)
-
-        # Find the indices of the maximum values in label_scores along the label dimension
-        max_labels = torch.argmax(label_scores, dim=1)
-
-        return label_scores, max_labels
-    '''
-    
     def defuzzify_batch(self):
         # Normalize Gamma along the cluster dimension
         normalized_gamma = self.compute_batched_normalized_gamma()
         
-        # Select only labeled data for Gamma and cluster labels
-        # Ensure that cluster labels are a 1D tensor of class indices
-        cluster_labels = self.parent.cluster_labels[:self.parent.c]
-
         # Compute label scores
         expanded_cluster_labels = self.parent.cluster_labels[:self.parent.c].unsqueeze(0).expand(normalized_gamma.shape[0], -1, -1)
 
         # Compute label scores
         label_scores = torch.sum(normalized_gamma.unsqueeze(-1) * expanded_cluster_labels, dim=1)
-
 
         # Find the indices of the maximum values in normalized_gamma along the cluster dimension
         max_indices = torch.argmax(normalized_gamma, dim=1)
