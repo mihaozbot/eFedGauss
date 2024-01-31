@@ -53,8 +53,10 @@ class MergingMechanism:
 
         # Update Gamma values 
         self.parent.Gamma[i_all] = 0 #self.parent.Gamma[i_all]
-        self.parent.S_inv[i_all] = torch.linalg.inv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
-
+        try:
+            self.parent.S_inv[i_all] = torch.linalg.inv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
+        except:
+            self.parent.S_inv[i_all] = torch.linalg.pinv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
          # Compute eigenvalues
         #eigenvalues = torch.linalg.eigvalsh(self.parent.S_inv[i_all])
         

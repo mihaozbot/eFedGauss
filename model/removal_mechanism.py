@@ -25,6 +25,7 @@ class RemovalMechanism:
         wrong_to_update = []
         first_correct_index = None
         first_wrong_index = None
+
         
         for index in sorted_indices:
             if correct_clusters_mask[index] and first_wrong_index is None:
@@ -56,13 +57,11 @@ class RemovalMechanism:
     def update_cluster_scores(self, cluster_indices, label, correct=True):
         cluster_indices = torch.tensor(cluster_indices)
 
-        #Increase the score if classification is correct
         score_increment = 1.0 if correct else 0.0
 
         # Create a tensor of score increments with the same length as cluster_indices
         score_increment_tensor = torch.full((len(cluster_indices),), score_increment, dtype=torch.float32, device=self.parent.device)
 
-        #Increase the number of prediction
         self.parent.num_pred[cluster_indices] += 1
 
         # Calculate new scores
@@ -92,6 +91,7 @@ class RemovalMechanism:
                 # Flatten the kappa matrix and find the global minimum
                 kappa_flat = self.parent.merging_mech.kappa.view(-1)
                 min_kappa_value, min_kappa_flat_idx = torch.min(kappa_flat, 0)
+
 
                 # Check if the minimum kappa value is infinite
                 if torch.isinf(min_kappa_value):
@@ -207,6 +207,14 @@ class RemovalMechanism:
                 for index in indices_to_remove:
                     self.remove_cluster(index)
                     
+
+    def removal_mechanism(self, c_max):
+
+
+        #self.remove_score(c_max)
+        self.remove_aged(c_max)
+
+
     def remove_cluster(self, cluster_index):
         '''Remove a specified cluster by replacing it with the last active cluster and updating relevant parameters. '''
         #Copy everhing from the last active cluster to the remove cluster index
@@ -218,7 +226,7 @@ class RemovalMechanism:
         #Instead of removing just copy last cluster in the place of the removed on
         if cluster_index != last_active_index: #The target cluster is not the last cluster
 
-            # Update matching_clusters list
+             # Update matching_clusters list
             #The last index was moved to j, 
             #we need to check if this new j is the right label
             if not torch.equal(self.parent.cluster_labels[cluster_index], self.parent.cluster_labels[last_active_index]):
@@ -233,15 +241,27 @@ class RemovalMechanism:
             self.parent.S.data[cluster_index] = self.parent.S.data[last_active_index]
             self.parent.n.data[cluster_index] = self.parent.n.data[last_active_index]
 
-            # Move the supporting tensors
             self.parent.S_inv.data[cluster_index] = self.parent.S_inv.data[last_active_index]
+            
             self.parent.age[cluster_index] = self.parent.age[last_active_index]
+
             self.parent.score[cluster_index] = self.parent.score[last_active_index]
             self.parent.num_pred[cluster_index] = self.parent.num_pred[last_active_index]
+
+            # Update the label of the cluster that is moved
             self.parent.cluster_labels[cluster_index] = self.parent.cluster_labels[last_active_index]
 
             # Update the Gamma value for the cluster 
             self.parent.Gamma[cluster_index] = self.parent.Gamma[last_active_index]
+
+            #if last_active_index == self.parent.matching_clusters[-1]: #if the last cluster is on the list, it is the last elements as the list is ordered
+                # The last cluster was moved to the where the jth index is pointing so just remove the last cluster from the list
+                # Remove the last index if last_active_index is in matching_clusters
+            #    self.parent.matching_clusters = self.parent.matching_clusters[:-1]
+            #else: #The last cluster is not a matching cluster so we can remove the cluster index
+            # Else, remove the cluster_index from matching_clusters
+            
+            #We need to remove j from the list
 
         else: #The cluster_index is the last index, so we just need to remove it
             self.parent.matching_clusters = self.parent.matching_clusters[:-1]
@@ -249,6 +269,24 @@ class RemovalMechanism:
         #If the cluster was the last cluster just reduce the number of clusters 
         # Decrement the count of active clusters
         self.parent.c -= 1
+
+        # Check if all elements in self.parent.cluster_labels[self.parent.matching_clusters] are the same
+        #labels_consistency_check = len(torch.unique(self.parent.cluster_labels[self.parent.matching_clusters], dim=0)) < 2
+        #if not labels_consistency_check:
+        #    print("Critical error: Labels consistency in matching clusters after removal:", labels_consistency_check)
+
+        # # Compute eigenvalues
+        # eigenvalues = torch.linalg.eigvalsh(self.parent.S_inv[cluster_index])
+
+        # # Check if all eigenvalues are positive (matrix is positive definite)
+        # if not torch.all(eigenvalues > 0):
+        #     # Handle the case where the matrix is not positive definite
+        #     # Depending on your requirements, you might set a default value or handle it differently
+        #     print("Matrix is not positive definite for index", cluster_index)
+        #     # Example: set S_inv[j] to a matrix of zeros or some other default value
+        #     # Adjust the dimensions as needed
+        #     self.parent.S_inv[j] = torch.zeros_like(self.parent.S[cluster_index])
+
 
         # Debugging checks
         if self.parent.enable_debugging:
@@ -259,6 +297,33 @@ class RemovalMechanism:
                 # Check if the label of cluster_index is among the labels of clusters in matching_clusters
                 label_match_check = self.parent.cluster_labels[cluster_index] in self.parent.cluster_labels[self.parent.matching_clusters]
                 print("Label of cluster index is in labels of matching clusters:", label_match_check)
+            
+
+    def select_clusters_nearmiss(self):
+        all_class_distances = self.vectorized_bhattacharyya_distance()
+
+        selected_clusters = {}
+        for class_label, distances in all_class_distances.items():
+            # Find the closest clusters for each class
+            min_distances, indices = torch.min(distances, dim=1)
+            sorted_indices = torch.argsort(min_distances)
+
+            # Select up to c_max clusters for this class
+            selected_clusters_for_class = sorted_indices[:self.parent.c_max].tolist()
+            selected_clusters[class_label] = selected_clusters_for_class
+
+        selected_clusters_tensor = torch.tensor(selected_clusters[0], dtype=torch.int32, device=self.parent.device)
+        all_clusters = torch.arange(self.parent.c, dtype=torch.int32, device=self.parent.device)
+
+        # Use the mask to filter out the elements
+        indices_to_remove = all_clusters[~torch.isin(all_clusters, selected_clusters_tensor)]
+                
+        with torch.no_grad():
+            # Remove additional low scoring clusters
+            for index in indices_to_remove:
+                self.remove_cluster(index)
+        #return selected_clusters
+
 
     def vectorized_bhattacharyya_distance(self):
         # Extract means (mu) and covariance matrices (sigma) for all valid clusters
@@ -318,6 +383,3 @@ class RemovalMechanism:
 
         return term1 + term2
     
-    def removal_mechanism(self, c_max):
-
-        self.remove_aged(c_max)

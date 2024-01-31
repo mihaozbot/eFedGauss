@@ -48,11 +48,11 @@ def plot_metric_data(metrics, metric_keys, rounds, title, legend= True):
     line_styles = ['-', '--', ':', '-.']
     markers = ['o', 's', '^', 'D']  # Circle, square, triangle up, diamond
     metric_names = [ 'F1 score','Precision', 'Recall']
-    fig = plt.figure(figsize=(8, 4.5))
+    fig = plt.figure(figsize=(8, 3))
     
     # Plot 'f1_score' for clients
     client_means, client_stds = calculate_mean_std(metrics,  'f1_score')
-    plot_with_intervals(rounds, client_means, client_stds, 'Client Models F1-Scores', client_color, 'f1_score', alpha=1, marker=markers[0])
+    plot_with_intervals(rounds, client_means, client_stds, 'Client Models F1 scores', client_color, 'f1_score', alpha=1, marker=markers[0])
 
     #agg_values = [m['aggregated_model']['binary']['f1_score'] for m in metrics]
     #plot_model_metric(rounds, agg_values, 'Aggregated Model F1-Score', agg_color, linestyle = line_styles[0], alpha=1, marker=markers[0])
@@ -93,7 +93,7 @@ def plot_cluster_data(metrics, rounds, legend= True):
     client_clusters_mean = np.mean(client_clusters, axis=1)
     client_clusters_std = np.std(client_clusters, axis=1)
 
-    fig = plt.figure(figsize=(8, 4.5))
+    fig = plt.figure(figsize=(8, 3))
     plot_with_intervals(rounds, client_clusters_mean, client_clusters_std, 'Average Client Clusters', color_clients, 'Number of Clusters', marker='s')
     plt.plot(rounds, aggregated_clusters, marker='^', linestyle='-', color=color_aggregated, label='Aggregated Clusters')
     plt.plot(rounds, federated_clusters, marker='D', linestyle='-', color=color_federated, label='Federated Clusters')
