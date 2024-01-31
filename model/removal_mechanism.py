@@ -7,6 +7,8 @@ class RemovalMechanism:
     def __init__(self, parent):
         self.parent = parent
 
+    #Evaluate clustering quality online
+    #Not used in this version of eFeGauss
     def update_score(self, label):
         if len(torch.unique(self.parent.cluster_labels[:self.parent.c],dim= 0)) < 2:
             return 
@@ -26,7 +28,6 @@ class RemovalMechanism:
         first_correct_index = None
         first_wrong_index = None
 
-        
         for index in sorted_indices:
             if correct_clusters_mask[index] and first_wrong_index is None:
                 correct_to_update.append(index)
@@ -53,7 +54,7 @@ class RemovalMechanism:
         if first_wrong_index is not None:
             self.update_cluster_scores([first_wrong_index], label, correct=False)
 
-
+    # Computes the new score and number of predictions
     def update_cluster_scores(self, cluster_indices, label, correct=True):
         cluster_indices = torch.tensor(cluster_indices)
 
@@ -131,6 +132,7 @@ class RemovalMechanism:
                     self.parent.merging_mech.kappa[:, cluster_to_remove_idx + 1:]
                 ], dim=1)
 
+    # Removes old clusters
     def remove_aged(self, c_max):
         if self.parent.c < 2:
             return
@@ -144,7 +146,7 @@ class RemovalMechanism:
                                             key=lambda idx: self.parent.age[idx], 
                                             reverse=True)
 
-            # Get the indices of clusters to remove, oldest first
+            # Get the indices of clusters to remove, larger indeces first, due to how the removal mechanism works
             indices_to_remove = sorted(sorted_clusters_by_age[:num_clusters_to_remove], reverse=True)
 
             with torch.no_grad():
@@ -208,31 +210,24 @@ class RemovalMechanism:
                     self.remove_cluster(index)
                     
 
-    def removal_mechanism(self, c_max):
-
-
-        #self.remove_score(c_max)
-        self.remove_aged(c_max)
-
-
     def remove_cluster(self, cluster_index):
         '''Remove a specified cluster by replacing it with the last active cluster and updating relevant parameters. '''
-        #Copy everhing from the last active cluster to the remove cluster index
-        #Then if the last active index was on the matching clusters list it needs to be removed, 
+        # Copy everyhing from the last active cluster to the remove cluster index
+        # Then if the last active index was on the matching clusters list it needs to be removed, 
         # else the index of the memoved cluster needs to be removed
         
         last_active_index = self.parent.c - 1
 
-        #Instead of removing just copy last cluster in the place of the removed on
+        # Instead of removing just copy last cluster in the place of the removed on
         if cluster_index != last_active_index: #The target cluster is not the last cluster
 
-             # Update matching_clusters list
-            #The last index was moved to j, 
-            #we need to check if this new j is the right label
+            # Update matching_clusters list
+            # The last index was moved to j, 
+            # we need to check if this new j is the right label
             if not torch.equal(self.parent.cluster_labels[cluster_index], self.parent.cluster_labels[last_active_index]):
                 self.parent.matching_clusters = self.parent.matching_clusters[self.parent.matching_clusters != cluster_index]
 
-            #If the last_active_index is on the matching cluster list, it has to be removed as it will not exist after this:
+            # If the last_active_index is on the matching cluster list, it has to be removed as it will not exist after this:
             elif self.parent.matching_clusters[-1] == last_active_index:
                 self.parent.matching_clusters = self.parent.matching_clusters[:-1]
 
@@ -241,52 +236,22 @@ class RemovalMechanism:
             self.parent.S.data[cluster_index] = self.parent.S.data[last_active_index]
             self.parent.n.data[cluster_index] = self.parent.n.data[last_active_index]
 
+            # Update the supporting tensors 
             self.parent.S_inv.data[cluster_index] = self.parent.S_inv.data[last_active_index]
-            
             self.parent.age[cluster_index] = self.parent.age[last_active_index]
-
             self.parent.score[cluster_index] = self.parent.score[last_active_index]
             self.parent.num_pred[cluster_index] = self.parent.num_pred[last_active_index]
-
-            # Update the label of the cluster that is moved
             self.parent.cluster_labels[cluster_index] = self.parent.cluster_labels[last_active_index]
 
             # Update the Gamma value for the cluster 
             self.parent.Gamma[cluster_index] = self.parent.Gamma[last_active_index]
 
-            #if last_active_index == self.parent.matching_clusters[-1]: #if the last cluster is on the list, it is the last elements as the list is ordered
-                # The last cluster was moved to the where the jth index is pointing so just remove the last cluster from the list
-                # Remove the last index if last_active_index is in matching_clusters
-            #    self.parent.matching_clusters = self.parent.matching_clusters[:-1]
-            #else: #The last cluster is not a matching cluster so we can remove the cluster index
-            # Else, remove the cluster_index from matching_clusters
-            
-            #We need to remove j from the list
-
         else: #The cluster_index is the last index, so we just need to remove it
             self.parent.matching_clusters = self.parent.matching_clusters[:-1]
          
-        #If the cluster was the last cluster just reduce the number of clusters 
+        # If the cluster was the last cluster just reduce the number of clusters 
         # Decrement the count of active clusters
         self.parent.c -= 1
-
-        # Check if all elements in self.parent.cluster_labels[self.parent.matching_clusters] are the same
-        #labels_consistency_check = len(torch.unique(self.parent.cluster_labels[self.parent.matching_clusters], dim=0)) < 2
-        #if not labels_consistency_check:
-        #    print("Critical error: Labels consistency in matching clusters after removal:", labels_consistency_check)
-
-        # # Compute eigenvalues
-        # eigenvalues = torch.linalg.eigvalsh(self.parent.S_inv[cluster_index])
-
-        # # Check if all eigenvalues are positive (matrix is positive definite)
-        # if not torch.all(eigenvalues > 0):
-        #     # Handle the case where the matrix is not positive definite
-        #     # Depending on your requirements, you might set a default value or handle it differently
-        #     print("Matrix is not positive definite for index", cluster_index)
-        #     # Example: set S_inv[j] to a matrix of zeros or some other default value
-        #     # Adjust the dimensions as needed
-        #     self.parent.S_inv[j] = torch.zeros_like(self.parent.S[cluster_index])
-
 
         # Debugging checks
         if self.parent.enable_debugging:
@@ -298,33 +263,7 @@ class RemovalMechanism:
                 label_match_check = self.parent.cluster_labels[cluster_index] in self.parent.cluster_labels[self.parent.matching_clusters]
                 print("Label of cluster index is in labels of matching clusters:", label_match_check)
             
-
-    def select_clusters_nearmiss(self):
-        all_class_distances = self.vectorized_bhattacharyya_distance()
-
-        selected_clusters = {}
-        for class_label, distances in all_class_distances.items():
-            # Find the closest clusters for each class
-            min_distances, indices = torch.min(distances, dim=1)
-            sorted_indices = torch.argsort(min_distances)
-
-            # Select up to c_max clusters for this class
-            selected_clusters_for_class = sorted_indices[:self.parent.c_max].tolist()
-            selected_clusters[class_label] = selected_clusters_for_class
-
-        selected_clusters_tensor = torch.tensor(selected_clusters[0], dtype=torch.int32, device=self.parent.device)
-        all_clusters = torch.arange(self.parent.c, dtype=torch.int32, device=self.parent.device)
-
-        # Use the mask to filter out the elements
-        indices_to_remove = all_clusters[~torch.isin(all_clusters, selected_clusters_tensor)]
-                
-        with torch.no_grad():
-            # Remove additional low scoring clusters
-            for index in indices_to_remove:
-                self.remove_cluster(index)
-        #return selected_clusters
-
-
+    # Computes overlapping of clusters, not used in this version of eFedGauss
     def vectorized_bhattacharyya_distance(self):
         # Extract means (mu) and covariance matrices (sigma) for all valid clusters
         mu = self.parent.mu[:self.parent.c]
@@ -383,3 +322,9 @@ class RemovalMechanism:
 
         return term1 + term2
     
+    # The rechanism that handles the removal of clusters
+    def removal_mechanism(self, c_max):
+        
+        #self.remove_score(c_max)
+        self.remove_aged(c_max)
+

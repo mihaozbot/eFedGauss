@@ -57,32 +57,12 @@ class MergingMechanism:
             self.parent.S_inv[i_all] = torch.linalg.inv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
         except:
             self.parent.S_inv[i_all] = torch.linalg.pinv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
-         # Compute eigenvalues
-        #eigenvalues = torch.linalg.eigvalsh(self.parent.S_inv[i_all])
-        
-        # Check if all eigenvalues are positive (matrix is positive definite)
-        #if not torch.all(eigenvalues > 0):
-            # Handle the case where the matrix is not positive definite
-            # Depending on your requirements, you might set a default value or handle it differently
-        #    print("Matrix is not positive definite for index", i_all)
-            # Example: set S_inv[j] to a matrix of zeros or some other default value
-            # Adjust the dimensions as needed
-         #   self.parent.S_inv[i_all] = torch.zeros_like(self.parent.S[i_all])
+            #with torch.no_grad():
+            #    self.parent.removal_mech.remove_cluster(i_all) # Something went wrong, just remove it
 
         # Use RemovalMechanism to remove the j-th cluster
         self.parent.removal_mech.remove_cluster(j_all)
         
-        # Compute eigenvalues
-        #eigenvalues = torch.linalg.eigvalsh(self.parent.S_inv[j_all])
-        
-        # Check if all eigenvalues are positive (matrix is positive definite)
-        #if not torch.all(eigenvalues > 0):
-            # Handle the case where the matrix is not positive definite
-            # Depending on your requirements, you might set a default value or handle it differently
-            #print("Matrix is not positive definite for index", i_all)
-            # Example: set S_inv[j] to a matrix of zeros or some other default value
-            # Adjust the dimensions as needed
-            #self.parent.S_inv[i_all] = torch.zeros_like(self.parent.S[i_all])
 
         # Visualize the clusters after merging, for debugging
         if self.parent.enable_debugging:
@@ -147,16 +127,12 @@ class MergingMechanism:
         Sigma = Sigma/(n_matrix[:, :, None, None]-1)
 
         # Compute log-determinant for numerical stability
-        # Compute log-determinant for numerical stability
         #L = torch.linalg.cholesky(Sigma)
         #det_matrix = torch.prod(torch.diag(L))**2
         det_matrix = torch.exp(torch.linalg.slogdet(Sigma)[1]) # [1] is the log determinant
 
         # Vectorized computation of volume V for upper triangle
         self.V = det_matrix**(1/self.parent.feature_dim)
-
-        #Extract the upper triangle
-        #self.V = torch.triu(self.V , diagonal=0)
 
     def update_volume(self, i):
         # i is the index in self.valid_clusters for the cluster that has just merged
@@ -190,7 +166,6 @@ class MergingMechanism:
 
     def update_merging_condition(self, i, j):
         # i and j are local to self.valid_clusters
-        #i_all = self.valid_clusters[i]
         j_all = self.valid_clusters[j]
 
         # Update V for the i-th row and column
@@ -205,6 +180,7 @@ class MergingMechanism:
         # Handle removal of the j-th cluster
         if j_all == (self.parent.c-1) or (self.valid_clusters[-1] != (self.parent.c-1)):
             self.valid_clusters = self.valid_clusters[self.valid_clusters != j_all]
+            
             # Adjust V and kappa matrices
             self.V = torch.cat((self.V[:j], self.V[j + 1:]), dim=0)  # Remove j-th row
             self.V = torch.cat((self.V[:, :j], self.V[:, j + 1:]), dim=1)  # Remove j-th column
@@ -226,7 +202,7 @@ class MergingMechanism:
 
         # Compare cluster volume to standard volume for the i-th row and column
         V_ratio = self.V/V_S_0
-        kappa_filter = V_ratio > (self.parent.num_sigma/self.parent.N_r)**(1/self.parent.feature_dim)
+        kappa_filter = V_ratio > (self.parent.N_r)**(1/self.parent.feature_dim)
         self.kappa[kappa_filter] = float("inf")
 
         kappa_min = torch.min(self.kappa[self.kappa==self.kappa])
@@ -252,30 +228,23 @@ class MergingMechanism:
             
         return merge_occurred  # Return True if any merge happened, otherwise False
     
-    def merging_mechanism(self, max_iterations = 10):
+    def merging_mechanism(self, max_iterations = 100):
     
         iteration = 0 # Iteration counter
         
-        #Check which clusters have the necesary conditions to allow them to merge
-        #The point is that we do not want to check all the clusters at every time step, but only the relevant ones
-        #if self.parent.c > 10*np.sqrt(self.parent.feature_dim):
-        #    self.valid_clusters = self.parent.matching_clusters
-        #else:
-        #self.valid_clusters = self.parent.matching_clusters[(self.parent.Gamma[self.parent.matching_clusters] > threshold)*
-        #                                                    (self.parent.n[self.parent.matching_clusters] >= self.parent.kappa_n)] #np.sqrt(
         # Vectorized computation for the condition
         condition = (self.parent.Gamma[self.parent.matching_clusters] > self.merge_threshold) & \
                     (self.parent.n[self.parent.matching_clusters] >= self.parent.kappa_n)
 
         # Sorting based on the condition
         # PyTorch's sort returns values and indices, we only need indices
-        _, sorted_indices = torch.sort(self.parent.Gamma[self.parent.matching_clusters[condition]], descending=True)
+        #_, sorted_indices = torch.sort(self.parent.Gamma[self.parent.matching_clusters[condition]], descending=True)
 
-        if len(sorted_indices)>1:
-            pass
+        #if len(sorted_indices)>1:
+        #    pass
 
         # Creating a tensor for the top 10 valid clusters
-        self.valid_clusters = self.parent.matching_clusters[condition][sorted_indices][:20]
+        self.valid_clusters = self.parent.matching_clusters[condition] #[sorted_indices][:100]
 
         if len(self.valid_clusters) < 2:
             return

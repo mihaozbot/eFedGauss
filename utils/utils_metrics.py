@@ -21,7 +21,7 @@ def calculate_metrics(pred_max, test_dataset, weight):
 
     return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1_score": f1}
 
-def calculate_roc_auc(outputs, test_dataset):
+def calculate_roc_auc(outputs, test_dataset, plot_flag=False):
     
     _, test_labels = test_dataset
         
@@ -32,7 +32,7 @@ def calculate_roc_auc(outputs, test_dataset):
     fpr, tpr, _ = roc_curve(test_labels, positive_class_scores)
 
     # Plot ROC Curve
-    if False:
+    if plot_flag:
         plt.figure(figsize=(8, 6))
         plt.plot(fpr, tpr, color='blue', lw=2, label='ROC curve (area = %0.1f)' % roc_auc)
         plt.plot([0, 1], [0, 1], color='gray', lw=2, linestyle='--')

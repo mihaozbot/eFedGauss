@@ -66,30 +66,19 @@ class ClusteringOps:
         e = z - self.parent.mu[j] # Error between the sample and the cluster mean
         self.parent.mu[j] += 1 / (1 + self.parent.n[j]) * e
 
-        # Check if self.parent.n[j] is equal to 1
+        # Check if self.parent.n[j] is equal to 1, the cluster can still be reset to the default
         if self.parent.n[j] < 2:
-            # Update self.parent.S[j] to self.parent.S_0 without gradient calculation
             with torch.no_grad():
                 self.parent.S[j] = self.parent.S_0.clone()
-
-        #self.parent.S[j] += e.view(-1, 1) @ (z - self.parent.mu[j]).view(1, -1)
-        #self.parent.n[j] +=  1 #
     
-        self.parent.S[j] = self.parent.S[j] + e.view(-1, 1) @ (z - self.parent.mu[j]).view(1, -1) + self.parent.S_0/self.parent.num_samples #*(1/self.parent.num_samples)
-        self.parent.n[j] = self.parent.n[j] + 1 #*self.parent.forgeting_factor
+        # Incremental clustering
+        self.parent.S[j] = self.parent.S[j] + e.view(-1, 1) @ (z - self.parent.mu[j]).view(1, -1)
+        self.parent.n[j] = self.parent.n[j] + 1 
         self.parent.age[j] = 0
-        
-        #x_minus_c = z - self.parent.mu[j]  # Difference between data point and cluster center
-        #term = torch.matmul(self.parent.S_inv[j], x_minus_c.unsqueeze(1))  # Adjust dimensions for matrix multiplication
-        #alpha = 1 / (self.parent.n[j] + 1)
-        #self.parent.S_inv[j] -= alpha / (1 + alpha * term.T @ x_minus_c) * term @ term.T
 
     def _increment_clusters(self, z):
         ''' Decide whether to increment an existing cluster or add a new cluster based on the current state. '''
-        
-        #if self.parent.enable_debugging and (j >= len(self.parent.mu) or j < 0):
-        #    logging.warning(f"Warning rule increment! Invalid cluster index: {j}. Valid indices are between 0 and {len(self.parent.mu)-1}.")
-        
+
         #Normalize membership functions 
         NGamma = self.parent.Gamma[self.parent.matching_clusters]/torch.sum(self.parent.Gamma[self.parent.matching_clusters])  
         
@@ -110,14 +99,6 @@ class ClusteringOps:
 
         # Update number of samples in each cluster
         self.parent.n[self.parent.matching_clusters] = self.parent.n[self.parent.matching_clusters]*self.parent.forgeting_factor + NGamma
-        
-        # for i in range(self.parent.c):
-        #     try:
-        #         eigenvalues = torch.linalg.eigvalsh(self.parent.S[i])
-        #         if not torch.all(eigenvalues >= 0):
-        #             print(f"Matrix of cluster {i} is not positive semidefinite. Minimum eigenvalue: {torch.min(eigenvalues)}")
-        #     except RuntimeError as e:
-           #     print(f"Exception occurred for cluster {i}: {e}")
                 
     def increment_or_add_cluster(self, z, label):
         ''' Increment an existing cluster if a cluster is activated enough, else add a new one'''
@@ -144,31 +125,15 @@ class ClusteringOps:
             else:
                 # Add a new cluster since the max Gamma cluster is not a matching one or its value is below the threshold
                 self._add_new_cluster(z, label)
-                # logging.info(f"Info. Added new cluster for label {label} due to low Gamma value or non-matching max Gamma. Total clusters now: {self.parent.c}")
                 j = self.parent.c - 1
 
-        ''' ''' 
-        # Compute S[j]/n[j]
+        # Compute inverse of S[j]/n[j]
         try:
             self.parent.S_inv[j] = torch.linalg.inv((self.parent.S[j] / self.parent.n[j]) * self.parent.feature_dim)
         except:
             #self.parent.S_inv[j] = torch.linalg.pinv((self.parent.S[j] / self.parent.n[j]) * self.parent.feature_dim)
             with torch.no_grad():
                 self.parent.removal_mech.remove_cluster(j)
-
-            # Simplified update of the inverse covariance matrix for cluster j
-
-        # Compute eigenvalues
-        # eigenvalues = torch.linalg.eigvalsh(self.parent.S_inv[j])
-
-        # # Check if all eigenvalues are positive (matrix is positive definite)
-        # if not torch.all(eigenvalues > 0):
-        #     # Handle the case where the matrix is not positive definite
-        #     # Depending on your requirements, you might set a default value or handle it differently
-        #     print("Matrix is not positive definite for index", j)
-        #     # Example: set S_inv[j] to a matrix of zeros or some other default value
-        #     # Adjust the dimensions as needed
-        #     self.parent.S_inv[j] = torch.zeros_like(self.parent.S[j])
 
     def update_global_statistics(self, z, label):
         ''' Update the global mean, covariance, and count based on the new data point. '''

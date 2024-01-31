@@ -34,7 +34,7 @@ class FederalOps:
                 if self.parent.matching_clusters[-1] == self.parent.c:
                     print(f"matching_clusters is not matching! There must be some error in the code logic.")
 
-            # Check if all elements in self.parent.cluster_labels[self.parent.matching_clusters] are the same
+                # Check if all elements in self.parent.cluster_labels[self.parent.matching_clusters] are the same
                 labels_consistency_check = len(torch.unique(self.parent.cluster_labels[self.parent.matching_clusters], dim=0)) == 1
                 if not labels_consistency_check:
                     print("Critical error: Labels consistency in matching clusters in federated merging:", labels_consistency_check)
@@ -44,22 +44,14 @@ class FederalOps:
 
                 #Use the merging mechanism 
                 self.parent.merging_mech.merging_mechanism()
-
-            #Remove small clusters 
-            #self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
-            #self.parent.matching_clusters = torch.arange(self.parent.c, dtype=torch.int32, device=self.parent.device)
-            #self.parent.merging_mech.valid_clusters = self.parent.matching_clusters
-            #self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
-            #if len(self.parent.matching_clusters) > self.parent.c_max:
-            if self.parent.c > self.parent.c_max:
+            
+            self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
+            if len(self.parent.matching_clusters) > self.parent.c_max:
+            #if self.parent.c > self.parent.c_max:
                 self.parent.removal_mech.remove_solo()
-
-                self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
                 self.parent.removal_mech.removal_mechanism(int(self.parent.c_max))              
-                #self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
-                #self.parent.merging_mech.valid_clusters = self.parent.matching_clusters
-            #self.parent.removal_mech.remove_overlapping()
-
+            
+            
     def merge_model_statistics(self, model):
         ''' Merge the global statistical parameters of another model into the current federated model. '''
 
