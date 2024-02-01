@@ -23,7 +23,6 @@ The eFedGauss project is organized as follows:
   - `utils_dataset/`: Utilities for data handling and preprocessing.
   - `utils_metrics/`: Metrics for evaluating the model's performance.
   - `utils_plots/`: Plotting functions to visualize the results.
-  - `utils_tables/`: Functions to generate result tables.
   - `utils_train/`: Training and testing.
 
 - `credit_card_fraud_experiment/`: Experimental setup and results for the credit card fraud detection.
