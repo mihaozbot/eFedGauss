@@ -20,15 +20,15 @@ class FederalOps:
             self.parent.merging_mech.valid_clusters = self.parent.matching_clusters
 
             random_indices = torch.randperm(self.parent.matching_clusters.size(0))
-            centers = self.parent.mu[self.parent.matching_clusters[random_indices[:self.parent.c_max]]].detach().clone()
-            
+            centers = self.parent.mu[self.parent.matching_clusters[random_indices[:100]]].detach().clone()
+            #centers = self.parent.mu[self.parent.matching_clusters].detach().clone()
             if len(centers) == 0:
                 continue
 
             for i, center in enumerate(centers):
 
-                #self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
-                #self.parent.merging_mech.valid_clusters = self.parent.matching_clusters
+                self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
+                self.parent.merging_mech.valid_clusters = self.parent.matching_clusters
 
                 #self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
                 if self.parent.matching_clusters[-1] == self.parent.c:
@@ -46,14 +46,14 @@ class FederalOps:
                 self.parent.merging_mech.merging_mechanism()
             
             self.parent.matching_clusters = torch.where(self.parent.cluster_labels[:self.parent.c][:, label])[0]
-            if len(self.parent.matching_clusters) > self.parent.c_max:
-            #if self.parent.c > self.parent.c_max:
-                self.parent.removal_mech.remove_solo()
+            #if len(self.parent.matching_clusters) > self.parent.c_max:
+            if self.parent.c > self.parent.c_max:
+                #self.parent.removal_mech.remove_solo()
                 self.parent.removal_mech.removal_mechanism(int(self.parent.c_max))              
             
             
     def merge_model_statistics(self, model):
-        ''' Merge the global statistical parameters of another model into the current federated model. '''
+        ''' Merge the global statistical parameters of another model into tdhe current federated model. '''
 
         # Calculate total samples in both models
         n_fed = torch.sum(self.parent.n_glo)

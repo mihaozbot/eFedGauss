@@ -72,7 +72,7 @@ class ClusteringOps:
                 self.parent.S[j] = self.parent.S_0.clone()
     
         # Incremental clustering
-        self.parent.S[j] = self.parent.S[j] + e.view(-1, 1) @ (z - self.parent.mu[j]).view(1, -1)
+        self.parent.S[j] = self.parent.S[j] + e.view(-1, 1) @ (z - self.parent.mu[j]).view(1, -1) #+ self.parent.S_0
         self.parent.n[j] = self.parent.n[j] + 1 
         self.parent.age[j] = 0
 

@@ -56,14 +56,14 @@ class MergingMechanism:
         try:
             self.parent.S_inv[i_all] = torch.linalg.inv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
         except:
-            self.parent.S_inv[i_all] = torch.linalg.pinv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
-            #with torch.no_grad():
-            #    self.parent.removal_mech.remove_cluster(i_all) # Something went wrong, just remove it
+            print("Error! Matrix is not invertable after merging.")
+            #self.parent.S_inv[i_all] = torch.linalg.pinv((self.parent.S[i_all] / self.parent.n[i_all]) * self.parent.feature_dim)
+            with torch.no_grad():
+                self.parent.removal_mech.remove_cluster(i_all) # Something went wrong, just remove it
 
         # Use RemovalMechanism to remove the j-th cluster
         self.parent.removal_mech.remove_cluster(j_all)
         
-
         # Visualize the clusters after merging, for debugging
         if self.parent.enable_debugging:
             self.plot_cluster(i_all, 'Merged Cluster (After)', 'green')
@@ -124,13 +124,18 @@ class MergingMechanism:
         mu_outer_product = mu_diff[..., None] * mu_diff[:, :, None, :]
         n_matrix = n[:, None] + n[None, :]
         Sigma = (S[None, :, :, :] + S[:, None, :, :]) + (n[:, None, None, None] * n[None, :, None, None] / n_matrix[:, :, None, None]) * mu_outer_product
-        Sigma = Sigma/(n_matrix[:, :, None, None]-1)
-
+        Sigma /= (n_matrix[:, :, None, None]-1)
+        
+        if torch.isnan(Sigma).any() or torch.isinf(Sigma).any():
+            print("Warning: Sigma contains NaNs or Infinities.")
         # Compute log-determinant for numerical stability
         #L = torch.linalg.cholesky(Sigma)
         #det_matrix = torch.prod(torch.diag(L))**2
-        det_matrix = torch.exp(torch.linalg.slogdet(Sigma)[1]) # [1] is the log determinant
-
+        try:
+            det_matrix = torch.exp(torch.linalg.slogdet(Sigma)[1]) # [1] is the log determinant
+        except:
+            print("Merging determinant error!")
+            
         # Vectorized computation of volume V for upper triangle
         self.V = det_matrix**(1/self.parent.feature_dim)
 
@@ -216,8 +221,8 @@ class MergingMechanism:
             # Map local indices i_valid, j_valid to global indices i_all, j_all
             i_all = self.valid_clusters[i_valid]
             j_all = self.valid_clusters[j_valid]
-
-            #Recompute condition for i and potenitionally j
+                
+            # Recompute condition for i and potenitionally j
             self.update_merging_condition(i_valid, j_valid)
             
             #Actual merging of clusters
@@ -234,17 +239,18 @@ class MergingMechanism:
         
         # Vectorized computation for the condition
         condition = (self.parent.Gamma[self.parent.matching_clusters] > self.merge_threshold) & \
-                    (self.parent.n[self.parent.matching_clusters] >= self.parent.kappa_n)
+                    (self.parent.n[self.parent.matching_clusters] >= 0)
 
-        # Sorting based on the condition
-        # PyTorch's sort returns values and indices, we only need indices
-        #_, sorted_indices = torch.sort(self.parent.Gamma[self.parent.matching_clusters[condition]], descending=True)
+        # Filter the matching clusters based on the condition
+        filtered_clusters = self.parent.matching_clusters[condition]
 
-        #if len(sorted_indices)>1:
-        #    pass
+        # Get the indices of the top 10 values in Gamma for the filtered clusters
+        top_indices_filtered = torch.argsort(self.parent.Gamma[filtered_clusters], descending=True)[:10]
 
-        # Creating a tensor for the top 10 valid clusters
-        self.valid_clusters = self.parent.matching_clusters[condition] #[sorted_indices][:100]
+        # Map these indices back to the original matching_clusters array
+        self.valid_clusters = torch.sort(filtered_clusters[top_indices_filtered], descending=False)[0]
+        
+        #self.valid_clusters = self.parent.matching_clusters[condition] 
 
         if len(self.valid_clusters) < 2:
             return
