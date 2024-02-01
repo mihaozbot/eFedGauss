@@ -39,26 +39,26 @@ To get started with eFedGauss, follow the setup instructions below.
 
 **Create and activate a Conda environment using the following commands:**
 
-\```bash
+```bash
 conda create -n eFedGauss python=3.10
 conda activate eFedGauss
-\```
+```
 
 ### Installing PyTorch and Related Packages
 
 **Install PyTorch and related packages with the following command:**
 
-\```bash
+```bash
 conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
-\```
+```
 
 ### Installing Additional Requirements
 
 **Install the remaining requirements from the `requirements.txt` file:**
 
-\```bash
+```bash
 pip install -r requirements.txt
-\```
+```
 
 ## Usage
 
