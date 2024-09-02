@@ -1,6 +1,6 @@
 
 # eFedGauss: A Federated Approach to Fuzzy Multivariate Gaussian Clustering
-**This paper is in the review process.**
+M. Ožbot, S. Ozawa and I. Škrjanc, "eFedGauss: A Federated Approach to Fuzzy Multivariate Gaussian Clustering," 2024 IEEE International Conference on Fuzzy Systems (FUZZ-IEEE), Yokohama, Japan, 2024, pp. 1-8, doi: 10.1109/FUZZ-IEEE60900.2024.10611844.
 
 ## Overview
 Evolving Federated Gaussian clustering (eFedGauss) addresses the challenge of determining the number of clusters in datasets that vary widely, a common issue in federated learning. Our method dynamically adjusts the number of clusters, making it versatile for different types of data, including complex and high-dimensional datasets like those in credit card fraud detection. Our tests, which include synthetic data, the Iris Flower dataset, and credit card fraud detection, demonstrate eFedGauss's superiority over traditional clustering methods in federated settings. This repository provides all necessary resources for implementing and exploring the capabilities of eFedGauss.
